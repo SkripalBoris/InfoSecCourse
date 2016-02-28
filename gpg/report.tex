@@ -114,7 +114,7 @@
 	\label{ris:step35}
 \end{figure}
 
-Для проверки соответствия подписи выберем команду \textit{"File \begin{math}\to\end{math} Descript/Verify Files"}. После чего необходимо выбрать сертификат, файл, который мы хотим проверить (в нашем случае test.txt), а так же файл с подписью (в нашем случае test.txt.sig). В случае успеха появится окошко, представленное на рисунке \ref{ris:step36}.
+Для проверки соответствия подписи выберем команду \textit{"File \begin{math}\to\end{math} Descript/ Verify Files"}. После чего необходимо выбрать сертификат, файл, который мы хотим проверить (в нашем случае test.txt), а так же файл с подписью (в нашем случае test.txt.sig). В случае успеха появится окошко, представленное на рисунке \ref{ris:step36}.
 
 \begin{figure}[h]
 	\center{\includegraphics[width=1\linewidth]{res/step36}}
@@ -122,4 +122,71 @@
 	\label{ris:step36}
 \end{figure}
 
+\subsection{Импорт чужого сертификата}
+Для импортирования чужого сертификата необходимо выполнить команду \textit{"File \begin{math}\to\end{math} Import Certificates"}. После чего откроется окно проводника, в котором необходимо выбрать чужой сертификат  (рисунок \ref{ris:step41}).
+
+\begin{figure}[h]
+	\center{\includegraphics[width=1\linewidth]{res/step41}}
+	\caption{Окно выбора файла сертификата.}
+	\label{ris:step41}
+\end{figure}
+
+После этого новый сертификат можно увидеть во вкладке "Imported Certificates"  (рисунок \ref{ris:step42}).
+
+\begin{figure}[h]
+	\center{\includegraphics[width=1\linewidth]{res/step42}}
+	\caption{Вкладка Imported Certificates.}
+	\label{ris:step42}
+\end{figure}
+
+Для подписания чужого сертификата необходимо выполнить команду \textit{"File \begin{math}\to\end{math} Sign/ Encrypt Files"}. После чего появится окошко, в котором необходимо выбрать файл, для которого будет создаваться ЭЦП (в нашем случае необходимо указать сертификат другого человека). После чего для проверки необходимо выполнить пункт \textit{"File \begin{math}\to\end{math} Descript/ Verify Files"}. Результат представлен на рисунке \ref{ris:step43}.
+
+\begin{figure}[h]
+	\center{\includegraphics[width=1\linewidth]{res/step43}}
+	\caption{Проверка подписи сертификата.}
+	\label{ris:step43}
+\end{figure}
+
+\subsection{Использование консольных команд}
+Вывод всех сертификатов происходит при помощи ключа  "\--list-keys".
+\begin{verbatim}
+	C:\Users\sba>gpg --list-keys
+	C:/Users/sba/AppData/Roaming/gnupg/pubring.gpg
+	----------------------------------------------
+	pub   2048R/9C7566F3 2016-02-22
+	uid     [абсолютное] sba002 <skipalboris@gmail.com>
+	sub   2048R/00808598 2016-02-22
+	
+	pub   2048R/7CD764F8 2016-02-25
+	uid     [неизвестно] myKey <annet-girl@mail.ru>
+	sub   2048R/4BECA6BD 2016-02-25
+\end{verbatim}
+
+Для симметричного шифрования файла используется ключ "\--symmetric". Создадим файл "SkripalSec.txt" и зашифруем его при помощи закрытого ключа.
+
+\begin{verbatim}
+	gpg --symmetric SkripalSec.txt
+\end{verbatim}
+
+После этого в папке появится файл SkripalSec.txt.gpg
+
+\begin{verbatim}
+dir
+
+28.02.2016  17:20    <DIR>          .
+28.02.2016  17:20    <DIR>          ..
+28.02.2016  16:52                 7 SkripalSec.txt
+28.02.2016  17:20                60 SkripalSec.txt.gpg
+\end{verbatim}
+
+Для расшифровки файла необходимо использовать ключ "\--decrypt".
+
+\begin{verbatim}
+C:\Users\sba\Downloads\lab1>gpg --decrypt SkripalSec.txt.gpg
+gpg: данные зашифрованы алгоритмом CAST5
+gpg: зашифровано одной фразой-паролем
+Hello!
+gpg: ВНИМАНИЕ: целостность сообщения не защищена
+\end{verbatim}
+	
 \end{document}
