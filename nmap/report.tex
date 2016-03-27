@@ -698,4 +698,203 @@
 			-> 51420 [RST, ACK] Seq=1 Ack=1 Win=0 Len=0
 		\end{verbatim}
 		Как видно из вывода утилиты, утилита так же пытается установить соединение по протоколу TCP, посылая пакет с флагом SYN. Так как порт закрыт, в ответ приходит пакет с флагами [RST, ACK]. После этого утилита считает, что порт закрыт, находит информацию об этом порте в файле nmap-services и выводит информацию о нем, однако статус порта будет closed.
+		\section{Просканировать виртуальную машину Metasploitable2 используя db\_nmap из состава metasploit-framework}
+		Перед началом сканировании необходимо включить postgresql и выполнить команду msfdb init для инициализации базы данных:
+		\begin{verbatim}
+			root@kali:~# service postgresql start
+			root@kali:~# msfdb init
+			Creating database user 'msf'
+			Enter password for new role: 
+			Enter it again: 
+			Creating databases 'msf' and 'msf_test'
+			Creating configuration file in /usr/share/metasploit-framework/config/database.yml
+			Creating initial database schema
+		\end{verbatim}
+		После чего необходимо запустить msfconsole и можно использовать любую из команд, описанных выше, но вместо nmap можно использовать db\_map. Результаты работы будут записаны в базу данных, тем самым обеспечивая экономию времени при сканировании портов.
+		\begin{verbatim}
+			root@kali:~# msfconsole 
+			
+			_                                                    _
+			/ \    /\         __                         _   __  /_/ __
+			| |\  / | _____   \ \           ___   _____ | | /  \ _   \ \
+			| | \/| | | ___\ |- -|   /\    / __\ | -__/ | || | || | |- -|
+			|_|   | | | _|__  | |_  / -\ __\ \   | |    | | \__/| |  | |_
+			|/  |____/  \___\/ /\ \\___/   \/     \__|    |_\  \___\
+			
+			
+			Frustrated with proxy pivoting? Upgrade to layer-2 VPN pivoting with
+			Metasploit Pro -- learn more on http://rapid7.com/metasploit
+			
+			=[ metasploit v4.11.7-                             ]
+			+ -- --=[ 1518 exploits - 877 auxiliary - 259 post        ]
+			+ -- --=[ 437 payloads - 38 encoders - 8 nops             ]
+			+ -- --=[ Free Metasploit Pro trial: http://r-7.co/trymsp ]
+			
+			msf > db_nmap 192.168.202.2
+			[*] Nmap: Starting Nmap 7.01 ( https://nmap.org ) at 2016-03-27 18:12 EDT
+			[*] Nmap: Nmap scan report for 192.168.202.2
+			[*] Nmap: Host is up (0.00023s latency).
+			[*] Nmap: Not shown: 977 closed ports
+			[*] Nmap: PORT     STATE SERVICE
+			[*] Nmap: 21/tcp   open  ftp
+			[*] Nmap: 22/tcp   open  ssh
+			[*] Nmap: 23/tcp   open  telnet
+			[*] Nmap: 25/tcp   open  smtp
+			[*] Nmap: 53/tcp   open  domain
+			[*] Nmap: 80/tcp   open  http
+			[*] Nmap: 111/tcp  open  rpcbind
+			[*] Nmap: 139/tcp  open  netbios-ssn
+			[*] Nmap: 445/tcp  open  microsoft-ds
+			[*] Nmap: 512/tcp  open  exec
+			[*] Nmap: 513/tcp  open  login
+			[*] Nmap: 514/tcp  open  shell
+			[*] Nmap: 1099/tcp open  rmiregistry
+			[*] Nmap: 1524/tcp open  ingreslock
+			[*] Nmap: 2049/tcp open  nfs
+			[*] Nmap: 2121/tcp open  ccproxy-ftp
+			[*] Nmap: 3306/tcp open  mysql
+			[*] Nmap: 5432/tcp open  postgresql
+			[*] Nmap: 5900/tcp open  vnc
+			[*] Nmap: 6000/tcp open  X11
+			[*] Nmap: 6667/tcp open  irc
+			[*] Nmap: 8009/tcp open  ajp13
+			[*] Nmap: 8180/tcp open  unknown
+			[*] Nmap: MAC Address: 08:00:27:3B:18:A4 (Oracle VirtualBox virtual NIC)
+			[*] Nmap: Nmap done: 1 IP address (1 host up) scanned in 13.39 seconds
+		\end{verbatim}
+	\section{Описать работу пяти записей из файла nmap-service-probes}
+		\begin{itemize}
+			\item Рассмотрим распознавание сервиса Samba
+			\begin{verbatim}
+				139/tcp open netbios-ssn Samba smbd 3.X (workgroup: WORKGROUP)
+			\end{verbatim}
+			Найдем соответствующую строку в файле
+			\begin{verbatim}
+				match netbios-ssn m=^\0\0\0.\xffSMBr\0\0\0\0\x88..\0\0[-\w. ]*\0+@
+				\x06\0\0\x01\0\x11\x06\0.*(?:[^\0]|[^_A-Z0-9-]\0)((?:[-\w]\0){2,50})=s
+				p/Samba smbd/ v/3.X/ i/workgroup: $P(1)/
+			\end{verbatim}
+			Как и было описано выше, строка состоит из директивы match, названия сервиса и шаблона. Шаблон состоит из регулярного выражения и строки для печати. К выражениям взятым в скобках, при печати можно обращаться как к параметрам. Данная директива сопоставляет ответ с регулярным
+			выражением:
+			\begin{verbatim}
+				^\0\0\0.\xffSMBr\0\0\0\0\x88..\0\0[-\w. ]*\0+
+				@\x06\0\0\x01\0\x11\x06\0.*(?:[^\0]|[^_A-Z0-9-]\0)((?:[-\w]\0){2,50})
+			\end{verbatim}
+			При этом, выражение подставленное вместо указанного ниже может быть использовано в качестве параметра при печати. Остальные игнорируются т.к. внутри скобок указан знак вопроса.
+			\begin{verbatim}
+				((?:[-\w]\0){2,50})
+			\end{verbatim}
+			Последняя строка определяет результат при совпадении. Ключ p указывает имя продукта, ключ v - версию, а i - дополнительную информацию. При выводе дополнительной информации также используется вспомогательная функция P(), которая удаляет все непечатаемые символы из параметра.
+			\begin{verbatim}
+				p/Samba smbd/ v/3.X/ i/workgroup: $P(1)/
+			\end{verbatim}
+			\item Probe TCP NULL q
+			
+			Данная директива используется для тестирования TCP портов, ее название NULL. Это связано с тем, что она не передает никакой запрос серверу.
+			\item totalwaitms 6000
+			
+			Данная строка означает, что максимальное время ожидания ответа равно 6000 миллисекунд.
+			\item Рассмотрим сопоставление для telnet
+			\begin{verbatim}
+			match telnet m|\xff\xfd\x18\xff\xfd \xff\xfd#\xff\xfd’$| p/Linux
+			telnetd/ o/Linux/ cpe:/o:linux:linux_kernel/a
+			\end{verbatim}
+			Сравнивает ответ с последовательностью байт 0xff, 0xfd, 0x18, 0xff, 0xfd, 0xff, 0xfd, ’\#’, 0xff, 0xfd, ”’, конец строки.
+			В случае успеха возвращает имя продукта Linux telnetd, ОС - Linux, cpe (Common platform enumeration)	- o:linux:linux-kernel
+			\item Добавление собственных строк:
+			\begin{verbatim}
+			Probe TCP MyServer q|\x02Hi|
+			rarity 1
+			ports 22000
+			match testServer m/^Hello, client \((\w*) ([\d.]*)\)/ p/$1/ v/$2/
+			\end{verbatim}
+			В данных строках мы описываем, какое сообщение будем отправлять (Hi) для идентификации, на какой порт, а так же какой ответ мы будем ожидать (Hello, client, имя сервиса и его версия).
+		\end{itemize}
+	\section{Описать работу скрипта из состава Nmap}
+		Выбран скрипт mysql-empty-password. Проверки для серверов MySQL с пустым паролем для root или anonymous.
+		Пример использования:
+		\begin{verbatim}
+			nmap -sV –script=mysql-empty-password <target>
+		\end{verbatim}
+		Результат работы:
+		\begin{verbatim}
+			3306/tcp open  mysql
+			| mysql-empty-password:
+			|   anonymous account has empty password
+			|_  root account has empty password
+		\end{verbatim}
+		Код скрипта:
+		\begin{verbatim}
+		local mysql = require "mysql"
+		local nmap = require "nmap"
+		local shortport = require "shortport"
+		local stdnse = require "stdnse"
+		local string = require "string"
+		local table = require "table"
+		
+		description = [[
+		Checks for MySQL servers with an empty password for <code>root</code> or
+		<code>anonymous</code>.
+		]]
+		
+		---
+		-- @output
+		-- 3306/tcp open  mysql
+		-- | mysql-empty-password:
+		-- |   anonymous account has empty password
+		-- |_  root account has empty password
+		
+		author = "Patrik Karlsson"
+		license = "Same as Nmap--See https://nmap.org/book/man-legal.html"
+		categories = {"intrusive", "auth"}
+		
+		
+		-- Version 0.3
+		-- Created 01/15/2010 - v0.1 - created by Patrik Karlsson <patrik@cqure.net>
+		-- Revised 01/23/2010 - v0.2 - revised by Patrik Karlsson, added anonymous
+		account check
+		-- Revised 01/23/2010 - v0.3 - revised by Patrik Karlsson, fixed abort bug
+		due to try of loginrequest
+		
+		portrule = shortport.port_or_service(3306, "mysql")
+		
+		action = function( host, port )
+		
+		local socket = nmap.new_socket()
+		local result = {}
+		local users = {"", "root"}
+		
+		-- set a reasonable timeout value
+		socket:set_timeout(5000)
+		
+		for _, v in ipairs( users ) do
+		local status, response = socket:connect(host, port)
+		if( not(status) ) then return stdnse.format_output(false, "Failed to
+		connect to mysql server") end
+		
+		status, response = mysql.receiveGreeting( socket )
+		if ( not(status) ) then
+		stdnse.debug3("%s", SCRIPT_NAME)
+		socket:close()
+		return response
+		end
+		
+		status, response = mysql.loginRequest( socket, { authversion = "post41",
+		charset = response.charset }, v, nil, response.salt )
+		if response.errorcode == 0 then
+		table.insert(result, string.format("%s account has empty password",
+		( v=="" and "anonymous" or v ) ) )
+		if nmap.registry.mysqlusers == nil then
+		nmap.registry.mysqlusers = {}
+		end
+		nmap.registry.mysqlusers[v=="" and "anonymous" or v] = ""
+		end
+		socket:close()
+		end
+		
+		return stdnse.format_output(true, result)
+
+		end
+		\end{verbatim}
+		В скрипте производиться управление сокетом - установка и закрытие соединения с хостом, указанным в параметрах. Метод loginRequest осуществляет попытку аутентификации, после чего анализируются полученные ответы. В случае, если аутентификация завершилась успешно, значит пароль не установлен.
 \end{document}
